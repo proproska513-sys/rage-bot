@@ -4,8 +4,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 S = chr(47)
 TOKEN = "9286788881:AAE7Zlt5Gbxk3FGdVHpSMXVFHfARMQRxjL0"
 ADM = "".join(["m", "a", "n", "d", "r", "u", "s", "y", "a"])
-URL = f"https:{S}{S}t.me{S}{ADM}"
-API = f"https:{S}{S}api.telegram.org{S}bot{TOKEN}{S}"
+URL, API = f"https:{S}{S}t.me{S}{ADM}", f"https:{S}{S}api.telegram.org{S}bot{TOKEN}{S}"
 TON_UAH, USDT_UAH, CPAY, SPLIT_KEY = 45, 45.6, "", ""
 
 E_BOLT, E_STAR, E_CROWN, E_GEM, E_FIRE, E_GIFT, E_BEAR, E_SOS = "5368324170671202286", "5447644880824181073", "5372981976804366741", "5465665476971471368", "5424972470023104089", "5373032425667498601", "5370838923828209944", "5373174941095051646"
@@ -118,4 +117,4 @@ def handle(u):
 
 def main():
     threading.Thread(target=lambda: HTTPServer(("0.0.0.0", int(os.environ.get("PORT", 8080))), H).serve_forever(), daemon=True).start()
-
+    threading.Thread(target=sync_frag, daemon=True).start()
