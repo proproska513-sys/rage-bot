@@ -16,7 +16,6 @@ BEARS = {"🧸 Плюшевый мишка (15⭐)": (12, "🧸"), "🐻 Бур�
 GIFTS = {"💝 Сердце (15⭐)": (12, "💝"), "🌹 Роза (25⭐)": (20, "🌹"), "🎁 Коробка (25⭐)": (20, "🎁"), "🍾 Шампанское (50⭐)": (39, "🍾"), "🎂 Торт (50⭐)": (39, "🎂"), "💐 Букет (50⭐)": (39, "💐"), "🚀 Ракета (50⭐)": (39, "🚀"), "🏆 Кубок (100⭐)": (78, "🏆"), "💍 Кольцо (100⭐)": (78, "💍"), "💎 Бриллиант (100⭐)": (78, "💎")}
 NFTS = {"🐸 Plush Pepe NFT": (3750, "🐸"), "🧢 Durov's Cap": (2650, "🧢"), "🍑 Precious Peach": (1490, "🍑"), "🚬 Vintage Cigar": (750, "🚬"), "📅 Homemade Cake": (290, "🎂"), "🍭 Lol Pop NFT": (235, "🍭"), "🍬 Candy Cane": (250, "🍬"), "🎃 Scared Cat": (830, "🎃"), "🔮 Crystal Ball": (625, "🔮"), "🎩 Top Hat": (499, "🎩"), "⌚️ Swiss Watch": (1160, "⌚️"), "💍 Diamond Ring": (790, "💍"), "🍸 Berry Box": (415, "🍸"), "🧿 Evil Eye": (335, "🧿"), "🍷 Spiced Wine": (315, "🍷")}
 
-# Автооценка коллекций по ссылке (флор в TON -> авторасчёт в грн с твоей маржой)
 FLOOR_TON = {"plushpepe": 45, "durovscap": 32, "preciouspeach": 18, "vintagecigar": 9, "toybear": 12, "scaredcat": 10, "swisswatch": 14, "diamondring": 9.5, "crystalball": 7.5, "tophat": 6, "berrybox": 5, "evileye": 4, "spicedwine": 3.8, "homemadecake": 3.5, "lolpop": 2.8, "candycane": 3, "mythmask": 10.5}
 ST, ORD = {}, {}
 
@@ -25,8 +24,11 @@ def detect_nft_price(link):
     col = slug.split("-").pop(0)
     try:
         html = requests.get(f"https:{S}{S}fragment.com{S}gift{S}{slug}", timeout=5).text
-        m = re.search(r'tm-value[^>]*>([0-9.,]+)', html)
-        if m: return round(float(m.group(1).replace(",", "")) * TON_UAH)
+        m = re.search(r'tm-section-header-status[^>]*>.*?tm-value[^>]*>([0-9.,]+)', html, re.S)
+        if m:
+            ton_val = float(m.group(1).replace(",", ""))
+            if 1 <= ton_val <= 1000:
+                return round(ton_val * TON_UAH)
     except Exception: pass
     return round(FLOOR_TON.get(col, 8.5) * TON_UAH)
 
