@@ -6,12 +6,20 @@ BOT_TOKEN = "9286788881:AAE7Zlt5Gbxk3FGdVHpSMXVFHfARMQRxjL0"
 U_NAME = "".join(["m", "a", "n", "d", "r", "u", "s", "y", "a"])
 DIRECT_URL = f"https:{SLASH}{SLASH}t.me{SLASH}{U_NAME}"
 BASE_API = f"https:{SLASH}{SLASH}api.telegram.org{SLASH}bot{BOT_TOKEN}{SLASH}"
+NFT_CDN = f"https:{SLASH}{SLASH}://fragment.com{SLASH}gift{SLASH}"
 
 TON_PRICE_UAH = 90
 UAH_PER_USDT = 45.5
 CRYPTO_PAY_TOKEN = ""
 
-NFT_CATALOG = {"Plush Pepe #104": 4500, "Durov's Cap #88": 3200, "Precious Peach #412": 1850, "Vintage Cigar #219": 950}
+# Каталог подарков: название -> (цена в грн, точное имя картинки на Fragment)
+NFT_CATALOG = {
+    "Plush Pepe #104": (4500, "plushpepe-104.medium.jpg"),
+    "Durov's Cap #88": (3200, "durovscap-88.medium.jpg"),
+    "Precious Peach #412": (1850, "preciouspeach-412.medium.jpg"),
+    "Vintage Cigar #219": (950, "vintagecigar-219.medium.jpg")
+}
+
 STATE = {}
 ORDERS = {}
 
@@ -52,6 +60,11 @@ MAIN_TEXT = f"⚡️ <b>RAGE STORE // DIGITAL MARKET</b>\nШоп цифровы�
 def send(cid, text, kb):
     api("sendMessage", {"chat_id": cid, "text": text, "parse_mode": "HTML", "reply_markup": kb})
 
+def send_photo(cid, photo_url, caption, kb):
+    res = api("sendPhoto", {"chat_id": cid, "photo": photo_url, "caption": caption, "parse_mode": "HTML", "reply_markup": kb})
+    if not res or not res.get("ok"):
+        send(cid, caption, kb)
+
 def pay_kb(oid=None, url=None):
     rows = [[{"text": "⚡️ ОПЛАТИТЬ АВТОМАТОМ (CRYPTOBOT)", "url": url, "style": "success"}], [{"text": "🔄 ПРОВЕРИТЬ ОПЛАТУ", "callback_data": f"chk:{oid}", "style": "primary"}]] if url and oid else []
     rows.extend([[{"text": f"✅ ОПЛАТИЛ НА КАРТУ / ЧЕК (@{U_NAME})", "url": DIRECT_URL, "style": "success"}], [{"text": "⬅️ В главное меню 🏠", "callback_data": "to_main", "style": "danger"}]])
@@ -64,6 +77,13 @@ def create_order(cid, title, price, target):
     ORDERS.update({oid: {"cid": cid, "title": title, "price": price, "target": target, "inv_id": inv.get("invoice_id"), "done": False}})
     send(cid, f"💳 <b>ЗАКАЗ // RAGE STORE</b>\n📦 Товар: <b>{title}</b>\n🎯 Получатель: <code>{target}</code>\n💰 К оплате: <b>{price} грн</b>\n\nКарта (UAH): <code>4874 0700 2382 7379</code>\nПосле оплаты нажми кнопку ниже 👇", pay_kb(oid, inv.get("bot_invoice_url")))
 
+def send_nft_catalog(cid):
+    for name, info in NFT_CATALOG.items():
+        price, img_file = info
+        kb = {"inline_keyboard": [[{"text": f"🛒 Купить {name} — {price} грн", "callback_data": f"buy_nft:{name}", "style": "success"}]]}
+        send_photo(cid, NFT_CDN + img_file, f"🖼 <b>{name}</b>\n💰 Цена: <b>{price} грн</b>\n⚡️ Моментальная передача на @username", kb)
+    send(cid, "⬆️ Выбери нужный подарок выше или нажми <b>«🔗 Прислать ссылку на свой NFT»</b> 👇", NFT_KB)
+
 def handle(upd):
     if "callback_query" in upd:
         cb = upd.get("callback_query", {})
@@ -75,11 +95,9 @@ def handle(upd):
             send(cid, MAIN_TEXT, MAIN_KB)
         elif data.startswith("buy_nft:"):
             _, name = data.split(":", 1)
-            STATE.update({cid: {"step": "user", "title": f"NFT: {name}", "price": NFT_CATALOG.get(name, 1000)}})
+            info = NFT_CATALOG.get(name, (1000, ""))
+            STATE.update({cid: {"step": "user", "title": f"NFT: {name}", "price": info}})
             send(cid, f"🖼 Выбран <b>{name}</b>. Введи свой <b>@username</b>:", BACK_KB)
-        elif data == "custom_nft":
-            STATE.update({cid: {"step": "nft_link"}})
-            send(cid, "🔗 Пришли ссылку на нужный NFT:", BACK_KB)
         elif data.startswith("chk:"):
             _, oid = data.split(":", 1)
             o = ORDERS.get(oid)
@@ -116,7 +134,11 @@ def handle(upd):
                 send(cid, "⚠️ Введи число, например: <code>2.5</code>", BACK_KB)
         elif step == "nft_link":
             STATE.update({cid: {"step": "nft_price", "link": text}})
-            send(cid, "💰 Введи цену этого NFT в грн:", BACK_KB)
+            slug = text.rstrip(SLASH).split(SLASH)[-1].lower()
+            if "nft" in text:
+                send_photo(cid, f"{NFT_CDN}{slug}.medium.jpg", "💰 Введи цену этого NFT в грн:", BACK_KB)
+            else:
+                send(cid, "💰 Введи цену этого NFT в грн:", BACK_KB)
         elif step == "nft_price":
             d = "".join(c for c in text if c.isdigit())
             STATE.update({cid: {"step": "user", "title": f"NFT ({st.get('link')})", "price": int(d) if d else 1000}})
@@ -133,9 +155,7 @@ def handle(upd):
     elif "NFT Маркет" in text:
         send(cid, "🖼 Выбери NFT из каталога или пришли ссылку:", NFT_KB)
     elif "Каталог NFT" in text:
-        rows = [[{"text": f"🖼 {k} — {v} грн", "callback_data": f"buy_nft:{k}", "style": "success"}] for k, v in NFT_CATALOG.items()]
-        rows.append([{"text": "⬅️ В главное меню 🏠", "callback_data": "to_main", "style": "danger"}])
-        send(cid, "📂 <b>КАТАЛОГ NFT:</b>", {"inline_keyboard": rows})
+        send_nft_catalog(cid)
     elif "Прислать ссылку на свой NFT" in text:
         STATE.update({cid: {"step": "nft_link"}})
         send(cid, "🔗 Пришли ссылку на нужный NFT:", BACK_KB)
@@ -150,16 +170,3 @@ def handle(upd):
 
 def main():
     threading.Thread(target=start_web, daemon=True).start()
-    api("deleteWebhook", {"drop_pending_updates": True})
-    print("RAGE STORE 24/7 ЗАПУЩЕН!", flush=True)
-    offset = 0
-    while True:
-        res = api("getUpdates", {"offset": offset, "timeout": 20})
-        if res and res.get("ok"):
-            for upd in res.get("result", []):
-                offset = upd.get("update_id", 0) + 1
-                handle(upd)
-
-if __name__ == "__main__":
-    main()
-# END
