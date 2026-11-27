@@ -46,7 +46,7 @@ def cpay(m, d):
 def auto_send(o):
     if SPLIT_KEY:
         try:
-            t, u = o.get("t", ""), o.get("u", "").lstrip("@"); q = int("".join(c for c in t if c.isdigit()) or 50)
+            t = o.get("t", ""); u = o.get("u", "").lstrip("@"); d = "".join(c for c in t if c.isdigit()); q = int(d) if d else 50
             ep = "premium" if "МЕСЯЦ" in t or "ГОД" in t else "stars"
             requests.post(f"https:{S}{S}api.split.tg{S}v1{S}buy{S}{ep}", json={"username": u, "months": q, "quantity": q}, headers={"Authorization": f"Bearer {SPLIT_KEY}"}, timeout=15)
         except Exception: pass
