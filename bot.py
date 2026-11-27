@@ -1,183 +1,105 @@
 import os, time, threading, requests
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-SLASH = chr(47)
-BOT_TOKEN = "9286788881:AAE7Zlt5Gbxk3FGdVHpSMXVFHfARMQRxjL0"
-U_NAME = "".join(["m", "a", "n", "d", "r", "u", "s", "y", "a"])
-DIRECT_URL = f"https:{SLASH}{SLASH}t.me{SLASH}{U_NAME}"
-BASE_API = f"https:{SLASH}{SLASH}api.telegram.org{SLASH}bot{BOT_TOKEN}{SLASH}"
+S = chr(47)
+TOKEN = "9286788881:AAE7Zlt5Gbxk3FGdVHpSMXVFHfARMQRxjL0"
+ADM = "".join(["m", "a", "n", "d", "r", "u", "s", "y", "a"])
+URL = f"https:{S}{S}t.me{S}{ADM}"
+API = f"https:{S}{S}api.telegram.org{S}bot{TOKEN}{S}"
+TON_UAH, USDT_UAH, CPAY = 90, 45.5, ""
 
-TON_PRICE_UAH = 90
-UAH_PER_USDT = 45.5
-CRYPTO_PAY_TOKEN = ""
+BASIC = {"🧸 Мишка (15⭐)": 20, "💝 Сердце (15⭐)": 20, "🌹 Роза (25⭐)": 30, "🎁 Коробка (25⭐)": 30, "🍾 Шампанское (50⭐)": 55, "🎂 Торт (50⭐)": 55, "💐 Букет (50⭐)": 55, "🚀 Ракета (50⭐)": 55, "🏆 Кубок (100⭐)": 105, "💍 Кольцо (100⭐)": 105, "💎 Бриллиант (100⭐)": 105}
+NFTS = {"🧸 Toy Bear NFT": 1450, "🐸 Plush Pepe NFT": 4500, "🧢 Durov's Cap": 3200, "🍑 Precious Peach": 1850, "🚬 Vintage Cigar": 950, "📅 Homemade Cake": 420, "🍭 Lol Pop NFT": 350, "🍬 Candy Cane": 380, "🎃 Scared Cat": 1200, "🔮 Crystal Ball": 890, "🎩 Top Hat": 750, "⌚️ Swiss Watch": 1600, "💍 Diamond Ring": 1100, "🍸 Berry Box": 640, "🧿 Evil Eye": 520, "🍷 Spiced Wine": 490}
+ST, ORD = {}, {}
 
-# --- ВСЕ МИШКИ И СТАНДАРТНЫЕ ПОДАРКИ TELEGRAM (ЦЕНА В ГРН) ---
-GIFTS_BASIC = {
-    "🧸 Плюшевый мишка (15 ⭐)": 20,
-    "💝 Сердце в коробке (15 ⭐)": 20,
-    "🌹 Красная роза (25 ⭐)": 30,
-    "🎁 Подарочная коробка (25 ⭐)": 30,
-    "🍾 Шампанское (50 ⭐)": 55,
-    "🎂 Праздничный торт (50 ⭐)": 55,
-    "💐 Букет цветов (50 ⭐)": 55,
-    "🚀 Ракета (50 ⭐)": 55,
-    "🏆 Кубок чемпиона (100 ⭐)": 105,
-    "💍 Кольцо с бриллиантом (100 ⭐)": 105,
-    "💎 Бриллиант (100 ⭐)": 105
-}
-
-# --- КОЛЛЕКЦИОННЫЕ NFT-ПОДАРКИ И МИШКИ (ЦЕНА В ГРН) ---
-GIFTS_NFT = {
-    "🧸 Toy Bear (Мишка NFT)": 1450,
-    "🐸 Plush Pepe (Пепе NFT)": 4500,
-    "🧢 Durov's Cap (Кепка Дурова)": 3200,
-    "🍑 Precious Peach (Персик)": 1850,
-    "🚬 Vintage Cigar (Сигара)": 950,
-    "📅 Homemade Cake (Торт NFT)": 420,
-    "🍭 Lol Pop (Леденец NFT)": 350,
-    "🍬 Candy Cane (Карамель NFT)": 380,
-    "🎃 Scared Cat (Кот NFT)": 1200,
-    "🔮 Crystal Ball (Шар NFT)": 890,
-    "🎩 Top Hat (Цилиндр NFT)": 750,
-    "⌚️ Swiss Watch (Часы NFT)": 1600,
-    "💍 Diamond Ring (Кольцо NFT)": 1100,
-    "🍸 Berry Box (Ягоды NFT)": 640,
-    "🧿 Evil Eye (Оберег NFT)": 520,
-    "🍷 Spiced Wine (Вино NFT)": 490
-}
-
-STATE = {}
-ORDERS = {}
-
-class PingHandler(BaseHTTPRequestHandler):
+class H(BaseHTTPRequestHandler):
     def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"OK")
-    def log_message(self, *args):
-        pass
+        self.send_response(200); self.end_headers(); self.wfile.write(b"OK")
+    def log_message(self, *a): pass
 
-def start_web():
-    HTTPServer(("0.0.0.0", int(os.environ.get("PORT", 8080))), PingHandler).serve_forever()
+def post(m, d):
+    try: return requests.post(API + m, json=d, timeout=25).json()
+    except Exception: time.sleep(2); return None
 
-def api(m, d):
-    try:
-        return requests.post(BASE_API + m, json=d, timeout=25).json()
-    except Exception:
-        time.sleep(2)
-        return None
+def cpay(m, d):
+    if not CPAY: return None
+    try: return requests.post(f"https:{S}{S}pay.crypt.bot{S}api{S}{m}", json=d, headers={"Crypto-Pay-API-Token": CPAY}, timeout=20).json()
+    except Exception: return None
 
-def crypto_api(m, d):
-    if not CRYPTO_PAY_TOKEN:
-        return None
-    try:
-        return requests.post(f"https:{SLASH}{SLASH}pay.crypt.bot{SLASH}api{SLASH}{m}", json=d, headers={"Crypto-Pay-API-Token": CRYPTO_PAY_TOKEN}, timeout=20).json()
-    except Exception:
-        return None
+M_KB = {"keyboard": [[{"text": "⭐️ ТГ Звёзды ⭐️", "style": "primary"}, {"text": "👑 Telegram Premium 👑", "style": "success"}], [{"text": "💎 Купить TON 💎", "style": "primary"}, {"text": "🎁 Подарки и NFT 🧸", "style": "success"}], [{"text": "🆘 Поддержка 🆘", "style": "danger"}]], "resize_keyboard": True}
+B_KB = {"keyboard": [[{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
+S_KB = {"keyboard": [[{"text": "⚡️ 50 Stars — 45 грн ✨", "style": "primary"}, {"text": "⚡️ 100 Stars — 85 грн ✨", "style": "primary"}], [{"text": "🔥 250 Stars — 220 грн ⭐️", "style": "success"}, {"text": "🔥 500 Stars — 410 грн ⭐️", "style": "success"}], [{"text": "👑 1000 Stars — 800 грн 💎", "style": "success"}], [{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
+P_KB = {"keyboard": [[{"text": "💎 3 МЕСЯЦА — 630 ГРН ✨", "style": "primary"}, {"text": "👑 6 МЕСЯЦЕВ — 850 ГРН 🔥", "style": "success"}], [{"text": "👑 1 ГОД — 1520 ГРН 🔥", "style": "success"}], [{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
+T_KB = {"keyboard": [[{"text": "💎 1 TON — 90 грн", "style": "primary"}, {"text": "💎 2 TON — 180 грн", "style": "primary"}], [{"text": "🔥 5 TON — 450 грн", "style": "success"}, {"text": "👑 10 TON — 900 грн", "style": "success"}], [{"text": "✍️ Своё количество TON", "style": "primary"}], [{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
+N_KB = {"keyboard": [[{"text": "🧸 Все мишки и подарки", "style": "primary"}], [{"text": "🖼 Каталог NFT-подарков", "style": "success"}], [{"text": "🔗 Ссылка на свой NFT", "style": "primary"}], [{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
+TXT = f"⚡️ <b>RAGE STORE // DIGITAL MARKET</b>\nШоп цифровых активов с автовыдачей 24/7.\n\n⭐️ <b>Stars</b> • 👑 <b>Premium</b> • 💎 <b>TON</b> • 🧸 <b>Мишки и NFT</b>\n🆘 Админ: @{ADM}\n⬇️ <i>Выбери раздел в меню внизу</i> ⬇️"
 
-MAIN_KB = {"keyboard": [[{"text": "⭐️ ТГ Звёзды ⭐️", "style": "primary"}, {"text": "👑 Telegram Premium 👑", "style": "success"}], [{"text": "💎 Купить TON 💎", "style": "primary"}, {"text": "🎁 Подарки и NFT 🧸", "style": "success"}], [{"text": "🆘 Поддержка 🆘", "style": "danger"}]], "resize_keyboard": True}
-BACK_KB = {"keyboard": [[{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
-STARS_KB = {"keyboard": [[{"text": "⚡️ 50 Stars — 45 грн ✨", "style": "primary"}, {"text": "⚡️ 100 Stars — 85 грн ✨", "style": "primary"}], [{"text": "🔥 250 Stars — 220 грн ⭐️", "style": "success"}, {"text": "🔥 500 Stars — 410 грн ⭐️", "style": "success"}], [{"text": "👑 1000 Stars — 800 грн 💎", "style": "success"}], [{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
-PREM_KB = {"keyboard": [[{"text": "💎 3 МЕСЯЦА — 630 ГРН ✨", "style": "primary"}, {"text": "👑 6 МЕСЯЦЕВ — 850 ГРН 🔥", "style": "success"}], [{"text": "👑 1 ГОД — 1520 ГРН 🔥", "style": "success"}], [{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
-TON_KB = {"keyboard": [[{"text": "💎 1 TON — 90 грн", "style": "primary"}, {"text": "💎 2 TON — 180 грн", "style": "primary"}], [{"text": "🔥 5 TON — 450 грн", "style": "success"}, {"text": "👑 10 TON — 900 грн", "style": "success"}], [{"text": "✍️ Ввести своё количество TON", "style": "primary"}], [{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
-NFT_KB = {"keyboard": [[{"text": "🧸 Все мишки и подарки (15–100 ⭐)", "style": "primary"}], [{"text": "🖼 Каталог NFT-подарков", "style": "success"}], [{"text": "🔗 Прислать ссылку на свой NFT", "style": "primary"}], [{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
-MAIN_TEXT = f"⚡️ <b>RAGE STORE // DIGITAL MARKET</b>\nШоп цифровых активов с автовыдачей 24/7.\n\n⭐️ <b>Stars</b> • 👑 <b>Premium</b> • 💎 <b>TON</b> • 🧸 <b>Все мишки и NFT</b>\n🆘 Админ: @{U_NAME}\n⬇️ <i>Выбери раздел в меню внизу</i> ⬇️"
+def send(c, t, k=None): post("sendMessage", {"chat_id": c, "text": t, "parse_mode": "HTML", **({"reply_markup": k} if k else {})})
+def anim(c, e): post("sendMessage", {"chat_id": c, "text": e})
 
-def send(cid, text, kb):
-    api("sendMessage", {"chat_id": cid, "text": text, "parse_mode": "HTML", "reply_markup": kb})
+def order(c, title, price, target):
+    oid = f"{c}_{int(time.time())}"
+    r = cpay("createInvoice", {"asset": "USDT", "amount": str(round(price / USDT_UAH, 2)), "description": f"{title} -> {target}"})
+    inv = r.get("result", {}) if r and r.get("ok") else {}
+    ORD.update({oid: {"c": c, "t": title, "p": price, "u": target, "id": inv.get("invoice_id")}})
+    rows = [[{"text": "⚡️ ОПЛАТИТЬ АВТОМАТОМ (CRYPTOBOT)", "url": inv.get("bot_invoice_url"), "style": "success"}], [{"text": "🔄 ПРОВЕРИТЬ ОПЛАТУ", "callback_data": f"chk:{oid}", "style": "primary"}]] if inv.get("bot_invoice_url") else []
+    rows.extend([[{"text": f"✅ ОПЛАТИЛ НА КАРТУ / ЧЕК (@{ADM})", "url": URL, "style": "success"}], [{"text": "⬅️ В главное меню 🏠", "callback_data": "main", "style": "danger"}]])
+    send(c, f"💳 <b>ЗАКАЗ // RAGE STORE</b>\n📦 <b>{title}</b>\n🎯 <code>{target}</code>\n💰 <b>{price} грн</b>\n\nКарта (UAH): <code>4874 0700 2382 7379</code>\nПосле оплаты нажми кнопку ниже 👇", {"inline_keyboard": rows})
 
-def send_anim(cid, emoji_char):
-    # Отправляет живой анимированный стикер-эмодзи перед каталогом
-    api("sendMessage", {"chat_id": cid, "text": emoji_char})
-
-def pay_kb(oid=None, url=None):
-    rows = [[{"text": "⚡️ ОПЛАТИТЬ АВТОМАТОМ (CRYPTOBOT)", "url": url, "style": "success"}], [{"text": "🔄 ПРОВЕРИТЬ ОПЛАТУ", "callback_data": f"chk:{oid}", "style": "primary"}]] if url and oid else []
-    rows.extend([[{"text": f"✅ ОПЛАТИЛ НА КАРТУ / ЧЕК (@{U_NAME})", "url": DIRECT_URL, "style": "success"}], [{"text": "⬅️ В главное меню 🏠", "callback_data": "to_main", "style": "danger"}]])
+def g_kb(d, p):
+    rows = [[{"text": f"{k} — {v} грн", "callback_data": f"{p}:{k}", "style": "success"}] for k, v in d.items()]
+    rows.append([{"text": "⬅️ В главное меню 🏠", "callback_data": "main", "style": "danger"}])
     return {"inline_keyboard": rows}
 
-def create_order(cid, title, price, target):
-    oid = f"{cid}_{int(time.time())}"
-    res = crypto_api("createInvoice", {"asset": "USDT", "amount": str(round(price / UAH_PER_USDT, 2)), "description": f"{title} -> {target}"})
-    inv = res.get("result", {}) if res and res.get("ok") else {}
-    ORDERS.update({oid: {"cid": cid, "title": title, "price": price, "target": target, "inv_id": inv.get("invoice_id"), "done": False}})
-    send(cid, f"💳 <b>ЗАКАЗ // RAGE STORE</b>\n📦 Товар: <b>{title}</b>\n🎯 Получатель: <code>{target}</code>\n💰 К оплате: <b>{price} грн</b>\n\nКарта (UAH): <code>4874 0700 2382 7379</code>\nПосле оплаты нажми кнопку ниже 👇", pay_kb(oid, inv.get("bot_invoice_url")))
-
-def build_gifts_kb(catalog_dict, prefix):
-    rows = [[{"text": f"{k} — {v} грн", "callback_data": f"{prefix}:{k}", "style": "success"}] for k, v in catalog_dict.items()]
-    rows.append([{"text": "⬅️ В главное меню 🏠", "callback_data": "to_main", "style": "danger"}])
-    return {"inline_keyboard": rows}
-
-def handle(upd):
-    if "callback_query" in upd:
-        cb = upd.get("callback_query", {})
-        cid = cb.get("message", {}).get("chat", {}).get("id")
-        data = cb.get("data", "")
-        api("answerCallbackQuery", {"callback_query_id": cb.get("id")})
-        if data == "to_main":
-            STATE.pop(cid, None)
-            send(cid, MAIN_TEXT, MAIN_KB)
-        elif data.startswith("gb:"):
-            _, name = data.split(":", 1)
-            price = GIFTS_BASIC.get(name, 25)
-            send_anim(cid, "🧸")
-            STATE.update({cid: {"step": "user", "title": name, "price": price}})
-            send(cid, f"🎁 Выбран подарок: <b>{name}</b> ({price} грн)\n\nВведи <b>@username</b>, кому отправить подарок:", BACK_KB)
-        elif data.startswith("gn:"):
-            _, name = data.split(":", 1)
-            price = GIFTS_NFT.get(name, 1000)
-            send_anim(cid, "🎁")
-            STATE.update({cid: {"step": "user", "title": f"NFT: {name}", "price": price}})
-            send(cid, f"🖼 Выбран NFT: <b>{name}</b> ({price} грн)\n\nВведи свой <b>@username</b> для получения NFT:", BACK_KB)
-        elif data.startswith("chk:"):
-            _, oid = data.split(":", 1)
-            o = ORDERS.get(oid)
-            res = crypto_api("getInvoices", {"invoice_ids": str(o.get("inv_id"))}) if o else None
-            items = res.get("result", {}).get("items", []) if res and res.get("ok") else []
-            if o and next(iter(items), {}).get("status") == "paid":
-                o.update({"done": True})
-                send_anim(cid, "🎉")
-                send(cid, f"🎉 <b>ОПЛАТА ПОДТВЕРЖДЕНА!</b>\n📦 <b>{o.get('title')}</b> -> <code>{o.get('target')}</code>", MAIN_KB)
-            else:
-                send(cid, "⏳ Оплата ещё не поступила.", pay_kb(oid, None))
+def handle(u):
+    if "callback_query" in u:
+        cb = u.get("callback_query", {}); c = cb.get("message", {}).get("chat", {}).get("id"); d = cb.get("data", "")
+        post("answerCallbackQuery", {"callback_query_id": cb.get("id")})
+        if d == "main": ST.pop(c, None); send(c, TXT, M_KB)
+        elif d.startswith("gb:") or d.startswith("gn:"):
+            p, k = d.split(":", 1); src = BASIC if p == "gb" else NFTS
+            anim(c, "🧸" if p == "gb" else "🎁"); ST.update({c: {"s": "u", "t": k, "p": src.get(k, 50)}})
+            send(c, f"🎁 Выбрано: <b>{k}</b> ({src.get(k, 50)} грн)\nВведи <b>@username</b> получателя:", B_KB)
+        elif d.startswith("chk:"):
+            _, oid = d.split(":", 1); o = ORD.get(oid)
+            r = cpay("getInvoices", {"invoice_ids": str(o.get("id"))}) if o else None
+            it = r.get("result", {}).get("items", []) if r and r.get("ok") else []
+            if o and next(iter(it), {}).get("status") == "paid": anim(c, "🎉"); send(c, f"🎉 <b>ОПЛАТА ПОДТВЕРЖДЕНА!</b>\n📦 <b>{o.get('t')}</b> -> <code>{o.get('u')}</code>", M_KB)
+            else: send(c, "⏳ Оплата ещё не поступила.")
         return
 
-    msg = upd.get("message")
-    if not msg:
-        return
-    cid = msg.get("chat", {}).get("id")
-    text = msg.get("text", "").strip()
-    if text.startswith("/start") or "главное меню" in text:
-        STATE.pop(cid, None)
-        send(cid, MAIN_TEXT, MAIN_KB)
-    elif cid in STATE:
-        st = STATE.get(cid, {})
-        step = st.get("step")
-        if step == "user":
-            STATE.pop(cid, None)
-            create_order(cid, st.get("title"), st.get("price"), text)
-        elif step == "ton":
-            try:
-                q = float(text.replace(",", "."))
-                p = round(q * TON_PRICE_UAH)
-                STATE.update({cid: {"step": "user", "title": f"{q} TON", "price": p}})
-                send(cid, f"💎 {q} TON = <b>{p} грн</b>. Введи адрес TON-кошелька:", BACK_KB)
-            except Exception:
-                send(cid, "⚠️ Введи число, например: <code>2.5</code>", BACK_KB)
-        elif step == "nft_link":
-            STATE.update({cid: {"step": "nft_price", "link": text}})
-            send(cid, "💰 Введи цену этого NFT в грн:", BACK_KB)
-        elif step == "nft_price":
-            d = "".join(c for c in text if c.isdigit())
-            STATE.update({cid: {"step": "user", "title": f"NFT ({st.get('link')})", "price": int(d) if d else 1000}})
-            send(cid, "👤 Введи свой <b>@username</b> для получения NFT:", BACK_KB)
-    elif "Звёзды" in text:
-        send_anim(cid, "⭐️")
-        send(cid, "⭐️ Выбери пакет звёзд:", STARS_KB)
-    elif "Premium" in text:
-        send_anim(cid, "👑")
-        send(cid, "👑 Выбери срок подписки:", PREM_KB)
-    elif "Купить TON" in text:
-        send_anim(cid, "💎")
-        send(cid, f"💎 Курс: <b>1 TON = {TON_PRICE_UAH} грн</b>. Выбери пакет:", TON_KB)
-    elif "Ввести своё количество TON" in text:
-        STATE.update({cid: {"step": "ton"}})
+    m = u.get("message")
+    if not m: return
+    c = m.get("chat", {}).get("id"); tx = m.get("text", "").strip()
+    if tx.startswith("/start") or "главное меню" in tx: ST.pop(c, None); send(c, TXT, M_KB)
+    elif c in ST:
+        s = ST.get(c, {}); stp = s.get("s")
+        if stp == "u": ST.pop(c, None); order(c, s.get("t"), s.get("p"), tx)
+        elif stp == "ton":
+            try: q = float(tx.replace(",", ".")); p = round(q * TON_UAH); ST.update({c: {"s": "u", "t": f"{q} TON", "p": p}}); send(c, f"💎 {q} TON = <b>{p} грн</b>. Введи TON-кошелёк:", B_KB)
+            except Exception: send(c, "⚠️ Введи число, например: <code>2.5</code>", B_KB)
+        elif stp == "nl": ST.update({c: {"s": "np", "l": tx}}); send(c, "💰 Введи цену этого NFT в грн:", B_KB)
+        elif stp == "np": d = "".join(x for x in tx if x.isdigit()); ST.update({c: {"s": "u", "t": f"NFT ({s.get('l')})", "p": int(d) if d else 1000}}); send(c, "👤 Введи свой <b>@username</b>:", B_KB)
+    elif "Звёзды" in tx: anim(c, "⭐️"); send(c, "⭐️ Выбери пакет звёзд:", S_KB)
+    elif "Premium" in tx: anim(c, "👑"); send(c, "👑 Выбери срок подписки:", P_KB)
+    elif "Купить TON" in tx: anim(c, "💎"); send(c, f"💎 Курс: <b>1 TON = {TON_UAH} грн</b>:", T_KB)
+    elif "Своё количество TON" in tx: ST.update({c: {"s": "ton"}}); send(c, "✍️ Введи количество TON:", B_KB)
+    elif "Подарки и NFT" in tx: anim(c, "🧸"); send(c, "🎁 <b>ВСЕ МИШКИ, ПОДАРКИ И NFT</b>:", N_KB)
+    elif "Все мишки" in tx: anim(c, "🧸"); send(c, "🧸 <b>ВСЕ МИШКИ И ПОДАРКИ (15–100⭐)</b>:", g_kb(BASIC, "gb"))
+    elif "Каталог NFT" in tx: anim(c, "🎁"); send(c, "🖼 <b>КОЛЛЕКЦИОННЫЕ NFT-ПОДАРКИ</b>:", g_kb(NFTS, "gn"))
+    elif "Ссылка на свой NFT" in tx: ST.update({c: {"s": "nl"}}); send(c, "🔗 Пришли ссылку на NFT:", B_KB)
+    elif "Поддержка" in tx: send(c, f"🆘 Поддержка @{ADM} (9:00–22:30)", {"inline_keyboard": [[{"text": f"🆘 НАПИСАТЬ (@{ADM})", "url": URL, "style": "danger"}]]})
+    elif "—" in tx:
+        l, r = tx.split("—", 1); p = int("".join(x for x in r if x.isdigit())); ST.update({c: {"s": "u", "t": l.strip(), "p": p}})
+        send(c, f"✅ Выбрано: <b>{l.strip()}</b> ({p} грн)\nВведи {'адрес TON-кошелька' if 'TON' in tx else '<b>@username</b> получателя'}:", B_KB)
+
+def main():
+    threading.Thread(target=lambda: HTTPServer(("0.0.0.0", int(os.environ.get("PORT", 8080))), H).serve_forever(), daemon=True).start()
+    post("deleteWebhook", {"drop_pending_updates": True}); print("RAGE STORE 24/7 ONLINE!", flush=True); off = 0
+    while True:
+        r = post("getUpdates", {"offset": off, "timeout": 20})
+        if r and r.get("ok"):
+            for u in r.get("result", []): off = u.get("update_id", 0) + 1; handle(u)
+
+if __name__ == "__main__": main()
+# END
