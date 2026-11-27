@@ -159,6 +159,11 @@ def auto_deliver(order):
     order["done"] = True
     send(order["cid"], f"🎉 <b>ОПЛАТА ПОДТВЕРЖДЕНА!</b>\n📦 Товар: <b>{order['title']}</b>\n🎯 Получатель: <code>{order['target']}</code>\n\nСпасибо за покупку в <b>RAGE STORE</b>! ⚡️", MAIN_KB)
 
+def parse_pack(text):
+    left, right = text.split("—", 1)
+    price = int("".join(c for c in right if c.isdigit()))
+    return left.strip(), price
+
 def handle(upd):
     if "callback_query" in upd:
         cb = upd["callback_query"]
@@ -169,7 +174,7 @@ def handle(upd):
             STATE.pop(cid, None)
             send(cid, MAIN_TEXT, MAIN_KB)
         elif data.startswith("buy_nft:"):
-            nft_name = data.split(":", 1)[1]
+            _, nft_name = data.split(":", 1)
             price = NFT_CATALOG.get(nft_name, 1000)
             STATE[cid] = {"step": "nft_user", "title": f"NFT: {nft_name}", "price": price}
             send(cid, f"🖼 Выбран <b>{nft_name}</b> ({price} грн).\n\nВведи свой <b>@username</b>, куда отправить NFT:", BACK_KB)
@@ -177,7 +182,7 @@ def handle(upd):
             STATE[cid] = {"step": "nft_link"}
             send(cid, "🔗 <b>Пришли ссылку на нужный NFT</b> (Getgems / Fragment / Telegram):", BACK_KB)
         elif data.startswith("chk:"):
-            oid = data.split(":", 1)[1]
+            _, oid = data.split(":", 1)
             order = ORDERS.get(oid)
             if not order:
                 send(cid, "⚠️ Заказ не найден.", MAIN_KB)
@@ -186,7 +191,8 @@ def handle(upd):
             else:
                 res = crypto_api("getInvoices", {"invoice_ids": str(order["inv_id"])})
                 items = res.get("result", {}).get("items", []) if res and res.get("ok") else []
-                if items and items[0].get("status") == "paid":
+                first_item = next(iter(items), {})
+                if first_item.get("status") == "paid":
                     auto_deliver(order)
                 else:
                     send(cid, "⏳ Оплата ещё не поступила. Попробуй через минуту.", pay_inline(oid, None))
@@ -234,7 +240,3 @@ def handle(upd):
             return
 
     if "Звёзды" in text:
-        send(cid, "⭐️ <b>TELEGRAM STARS</b>\nВыбери нужный пакет звёзд внизу 👇", STARS_KB)
-    elif "Premium" in text:
-        send(cid, "👑 <b>TELEGRAM PREMIUM</b>\nВыбери срок подписки внизу 👇", PREM_KB)
-    elif "Купить TON" in text:
