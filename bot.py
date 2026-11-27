@@ -8,12 +8,13 @@ SLASH = chr(47)
 BOT_TOKEN = "9286788881:AAE7Zlt5Gbxk3FGdVHpSMXVFHfARMQRxjL0"
 U_NAME = "".join(["m", "a", "n", "d", "r", "u", "s", "y", "a"])
 DIRECT_URL = f"https:{SLASH}{SLASH}t.me{SLASH}{U_NAME}"
+BASE_API = f"https:{SLASH}{SLASH}api.telegram.org{SLASH}bot{BOT_TOKEN}{SLASH}"
 
 class PingHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"RAGE STORE IS ONLINE 24/7")
+        self.wfile.write(b"RAGE STORE ONLINE 24/7")
     def log_message(self, format, *args):
         pass
 
@@ -23,10 +24,13 @@ def start_web_server():
     server.serve_forever()
 
 def api(method, data):
-    url = f"https:{SLASH}{SLASH}api.telegram.org{SLASH}bot{BOT_TOKEN}{SLASH}{method}"
     try:
-        return requests.post(url, json=data, timeout=25).json()
-    except Exception:
+        r = requests.post(BASE_API + method, json=data, timeout=25).json()
+        if not r.get("ok"):
+            print("TG API ERROR:", r, flush=True)
+        return r
+    except Exception as e:
+        print("NET ERROR:", e, flush=True)
         time.sleep(2)
         return None
 
@@ -130,7 +134,3 @@ def main():
 if __name__ == "__main__":
     main()
 # END
-
-
-
-
