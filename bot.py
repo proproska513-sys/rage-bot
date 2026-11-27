@@ -138,15 +138,19 @@ def create_order(cid, title, price_uah, target):
         usdt_amount = round(price_uah / UAH_PER_USDT, 2)
         res = crypto_api("createInvoice", {"asset": "USDT", "amount": str(usdt_amount), "description": f"{title} -> {target}"})
         if res and res.get("ok"):
-            inv_id = res["result"]["invoice_id"]
-            pay_url = res["result"]["bot_invoice_url"]
+            inv_data = res.get("result", {})
+            inv_id = inv_data.get("invoice_id")
+            pay_url = inv_data.get("bot_invoice_url")
     ORDERS[oid] = {"cid": cid, "title": title, "price": price_uah, "target": target, "inv_id": inv_id, "done": False}
     text = f"💳 <b>ОФОРМЛЕНИЕ ЗАКАЗА // RAGE STORE</b>\n📦 Товар: <b>{title}</b>\n🎯 Получатель: <code>{target}</code>\n💰 К оплате: <b>{price_uah} грн</b>\n\nПереведи <b>{price_uah} грн</b> на карту:\n<code>4874 0700 2382 7379</code>\nи отправь чек @" + U_NAME + " по кнопке ниже 👇"
     send(cid, text, pay_inline(oid, pay_url))
 
 def auto_deliver(order):
     order["done"] = True
-    send(order["cid"], f"🎉 <b>ОПЛАТА ПОДТВЕРЖДЕНА!</b>\n📦 Товар: <b>{order['title']}</b>\n🎯 Получатель: <code>{order['target']}</code>\n\nСпасибо за покупку в <b>RAGE STORE</b>! ⚡️", MAIN_KB)
+    c_id = order.get("cid")
+    o_title = order.get("title")
+    o_target = order.get("target")
+    send(c_id, f"🎉 <b>ОПЛАТА ПОДТВЕРЖДЕНА!</b>\n📦 Товар: <b>{o_title}</b>\n🎯 Получатель: <code>{o_target}</code>\n\nСпасибо за покупку в <b>RAGE STORE</b>! ⚡️", MAIN_KB)
 
 def parse_pack(text):
     left, right = text.split("—", 1)
@@ -154,9 +158,11 @@ def parse_pack(text):
     return left.strip(), price
 
 def handle_cb(cb):
-    cid = cb["message"]["chat"]["id"]
+    msg_obj = cb.get("message", {})
+    chat_obj = msg_obj.get("chat", {})
+    cid = chat_obj.get("id")
     data = cb.get("data", "")
-    api("answerCallbackQuery", {"callback_query_id": cb["id"]})
+    api("answerCallbackQuery", {"callback_query_id": cb.get("id")})
     if data == "to_main":
         STATE.pop(cid, None)
         send(cid, MAIN_TEXT, MAIN_KB)
@@ -173,10 +179,10 @@ def handle_cb(cb):
         order = ORDERS.get(oid)
         if not order:
             send(cid, "⚠️ Заказ не найден.", MAIN_KB)
-        elif order["done"]:
+        elif order.get("done"):
             send(cid, "✅ Заказ уже выдан!", MAIN_KB)
         else:
-            res = crypto_api("getInvoices", {"invoice_ids": str(order["inv_id"])})
+            res = crypto_api("getInvoices", {"invoice_ids": str(order.get("inv_id"))})
             items = res.get("result", {}).get("items", []) if res and res.get("ok") else []
             first_item = next(iter(items), {})
             if first_item.get("status") == "paid":
@@ -185,11 +191,11 @@ def handle_cb(cb):
                 send(cid, "⏳ Оплата ещё не поступила. Попробуй через минуту.", pay_inline(oid, None))
 
 def handle_state(cid, text):
-    st = STATE[cid]
+    st = STATE.get(cid, {})
     step = st.get("step")
     if step in ("target_user", "nft_user"):
         STATE.pop(cid, None)
-        create_order(cid, st["title"], st["price"], text)
+        create_order(cid, st.get("title"), st.get("price"), text)
     elif step == "ton_amount":
         try:
             qty = float(text.replace(",", "."))
@@ -207,7 +213,8 @@ def handle_state(cid, text):
     elif step == "nft_custom_price":
         digits = "".join(c for c in text if c.isdigit())
         price_uah = int(digits) if digits else 1000
-        STATE[cid] = {"step": "nft_user", "title": f"NFT по ссылке ({st['link']})", "price": price_uah}
+        nft_url = st.get("link", "")
+        STATE[cid] = {"step": "nft_user", "title": f"NFT по ссылке ({nft_url})", "price": price_uah}
         send(cid, "👤 Введи свой <b>@username</b>, куда передать NFT после оплаты:", BACK_KB)
 
 def handle_menu(cid, text):
@@ -218,7 +225,3 @@ def handle_menu(cid, text):
     elif "Купить TON" in text:
         send(cid, f"💎 <b>RAGE STORE // ПОКУПКА TON</b>\nКурс: <b>1 TON = {TON_PRICE_UAH} грн</b>\n\nВыбери пакет или нажми <b>«Ввести своё количество TON»</b> 👇", TON_KB)
     elif "Ввести своё количество TON" in text:
-        STATE[cid] = {"step": "ton_amount"}
-        send(cid, "✍️ <b>Введи нужное количество TON</b> (например: <code>1.5</code> или <code>7</code>):", BACK_KB)
-    elif "NFT Маркет" in text:
-
