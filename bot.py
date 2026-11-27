@@ -61,10 +61,7 @@ MAIN_KB = {
     "resize_keyboard": True
 }
 
-BACK_KB = {
-    "keyboard": [[{"text": "⬅️ В главное меню 🏠", "style": "danger"}]],
-    "resize_keyboard": True
-}
+BACK_KB = {"keyboard": [[{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
 
 STARS_KB = {
     "keyboard": [
@@ -144,15 +141,7 @@ def create_order(cid, title, price_uah, target):
             inv_id = res["result"]["invoice_id"]
             pay_url = res["result"]["bot_invoice_url"]
     ORDERS[oid] = {"cid": cid, "title": title, "price": price_uah, "target": target, "inv_id": inv_id, "done": False}
-    text = (
-        f"💳 <b>ОФОРМЛЕНИЕ ЗАКАЗА // RAGE STORE</b>\n"
-        f"📦 Товар: <b>{title}</b>\n"
-        f"🎯 Получатель: <code>{target}</code>\n"
-        f"💰 К оплате: <b>{price_uah} грн</b>\n\n"
-        f"Переведи <b>{price_uah} грн</b> на карту:\n"
-        f"<code>4874 0700 2382 7379</code>\n"
-        f"и отправь чек @" + U_NAME + " по кнопке ниже 👇"
-    )
+    text = f"💳 <b>ОФОРМЛЕНИЕ ЗАКАЗА // RAGE STORE</b>\n📦 Товар: <b>{title}</b>\n🎯 Получатель: <code>{target}</code>\n💰 К оплате: <b>{price_uah} грн</b>\n\nПереведи <b>{price_uah} грн</b> на карту:\n<code>4874 0700 2382 7379</code>\nи отправь чек @" + U_NAME + " по кнопке ниже 👇"
     send(cid, text, pay_inline(oid, pay_url))
 
 def auto_deliver(order):
@@ -164,79 +153,72 @@ def parse_pack(text):
     price = int("".join(c for c in right if c.isdigit()))
     return left.strip(), price
 
-def handle(upd):
-    if "callback_query" in upd:
-        cb = upd["callback_query"]
-        cid = cb["message"]["chat"]["id"]
-        data = cb.get("data", "")
-        api("answerCallbackQuery", {"callback_query_id": cb["id"]})
-        if data == "to_main":
-            STATE.pop(cid, None)
-            send(cid, MAIN_TEXT, MAIN_KB)
-        elif data.startswith("buy_nft:"):
-            _, nft_name = data.split(":", 1)
-            price = NFT_CATALOG.get(nft_name, 1000)
-            STATE[cid] = {"step": "nft_user", "title": f"NFT: {nft_name}", "price": price}
-            send(cid, f"🖼 Выбран <b>{nft_name}</b> ({price} грн).\n\nВведи свой <b>@username</b>, куда отправить NFT:", BACK_KB)
-        elif data == "custom_nft":
-            STATE[cid] = {"step": "nft_link"}
-            send(cid, "🔗 <b>Пришли ссылку на нужный NFT</b> (Getgems / Fragment / Telegram):", BACK_KB)
-        elif data.startswith("chk:"):
-            _, oid = data.split(":", 1)
-            order = ORDERS.get(oid)
-            if not order:
-                send(cid, "⚠️ Заказ не найден.", MAIN_KB)
-            elif order["done"]:
-                send(cid, "✅ Заказ уже выдан!", MAIN_KB)
-            else:
-                res = crypto_api("getInvoices", {"invoice_ids": str(order["inv_id"])})
-                items = res.get("result", {}).get("items", []) if res and res.get("ok") else []
-                first_item = next(iter(items), {})
-                if first_item.get("status") == "paid":
-                    auto_deliver(order)
-                else:
-                    send(cid, "⏳ Оплата ещё не поступила. Попробуй через минуту.", pay_inline(oid, None))
-        return
-
-    msg = upd.get("message")
-    if not msg:
-        return
-    cid = msg["chat"]["id"]
-    text = msg.get("text", "").strip()
-
-    if text.startswith("/start") or "главное меню" in text:
+def handle_cb(cb):
+    cid = cb["message"]["chat"]["id"]
+    data = cb.get("data", "")
+    api("answerCallbackQuery", {"callback_query_id": cb["id"]})
+    if data == "to_main":
         STATE.pop(cid, None)
         send(cid, MAIN_TEXT, MAIN_KB)
-        return
+    elif data.startswith("buy_nft:"):
+        _, nft_name = data.split(":", 1)
+        price = NFT_CATALOG.get(nft_name, 1000)
+        STATE[cid] = {"step": "nft_user", "title": f"NFT: {nft_name}", "price": price}
+        send(cid, f"🖼 Выбран <b>{nft_name}</b> ({price} грн).\n\nВведи свой <b>@username</b>, куда отправить NFT:", BACK_KB)
+    elif data == "custom_nft":
+        STATE[cid] = {"step": "nft_link"}
+        send(cid, "🔗 <b>Пришли ссылку на нужный NFT</b> (Getgems / Fragment / Telegram):", BACK_KB)
+    elif data.startswith("chk:"):
+        _, oid = data.split(":", 1)
+        order = ORDERS.get(oid)
+        if not order:
+            send(cid, "⚠️ Заказ не найден.", MAIN_KB)
+        elif order["done"]:
+            send(cid, "✅ Заказ уже выдан!", MAIN_KB)
+        else:
+            res = crypto_api("getInvoices", {"invoice_ids": str(order["inv_id"])})
+            items = res.get("result", {}).get("items", []) if res and res.get("ok") else []
+            first_item = next(iter(items), {})
+            if first_item.get("status") == "paid":
+                auto_deliver(order)
+            else:
+                send(cid, "⏳ Оплата ещё не поступила. Попробуй через минуту.", pay_inline(oid, None))
 
-    if cid in STATE:
-        st = STATE[cid]
-        step = st.get("step")
-        if step in ("target_user", "nft_user"):
-            STATE.pop(cid, None)
-            create_order(cid, st["title"], st["price"], text)
-            return
-        if step == "ton_amount":
-            try:
-                qty = float(text.replace(",", "."))
-                if qty < 0.5:
-                    send(cid, "⚠️ Минимум — от <b>0.5 TON</b>. Введи число ещё раз:", BACK_KB)
-                    return
-                price_uah = round(qty * TON_PRICE_UAH)
-                STATE[cid] = {"step": "target_user", "title": f"{qty} TON", "price": price_uah}
-                send(cid, f"💎 Количество: <b>{qty} TON</b>\n💰 Стоимость: <b>{price_uah} грн</b>\n\nТеперь введи свой <b>адрес TON-кошелька</b>:", BACK_KB)
-            except ValueError:
-                send(cid, "⚠️ Введи количество цифрой, например: <code>2.5</code>", BACK_KB)
-            return
-        if step == "nft_link":
-            STATE[cid] = {"step": "nft_custom_price", "link": text}
-            send(cid, "💰 Введи стоимость этого NFT в <b>грн</b>:", BACK_KB)
-            return
-        if step == "nft_custom_price":
-            digits = "".join(c for c in text if c.isdigit())
-            price_uah = int(digits) if digits else 1000
-            STATE[cid] = {"step": "nft_user", "title": f"NFT по ссылке ({st['link']})", "price": price_uah}
-            send(cid, "👤 Введи свой <b>@username</b>, куда передать NFT после оплаты:", BACK_KB)
-            return
+def handle_state(cid, text):
+    st = STATE[cid]
+    step = st.get("step")
+    if step in ("target_user", "nft_user"):
+        STATE.pop(cid, None)
+        create_order(cid, st["title"], st["price"], text)
+    elif step == "ton_amount":
+        try:
+            qty = float(text.replace(",", "."))
+            if qty < 0.5:
+                send(cid, "⚠️ Минимум — от <b>0.5 TON</b>. Введи число ещё раз:", BACK_KB)
+                return
+            price_uah = round(qty * TON_PRICE_UAH)
+            STATE[cid] = {"step": "target_user", "title": f"{qty} TON", "price": price_uah}
+            send(cid, f"💎 Количество: <b>{qty} TON</b>\n💰 Стоимость: <b>{price_uah} грн</b>\n\nТеперь введи свой <b>адрес TON-кошелька</b>:", BACK_KB)
+        except ValueError:
+            send(cid, "⚠️ Введи количество цифрой, например: <code>2.5</code>", BACK_KB)
+    elif step == "nft_link":
+        STATE[cid] = {"step": "nft_custom_price", "link": text}
+        send(cid, "💰 Введи стоимость этого NFT в <b>грн</b>:", BACK_KB)
+    elif step == "nft_custom_price":
+        digits = "".join(c for c in text if c.isdigit())
+        price_uah = int(digits) if digits else 1000
+        STATE[cid] = {"step": "nft_user", "title": f"NFT по ссылке ({st['link']})", "price": price_uah}
+        send(cid, "👤 Введи свой <b>@username</b>, куда передать NFT после оплаты:", BACK_KB)
 
+def handle_menu(cid, text):
     if "Звёзды" in text:
+        send(cid, "⭐️ <b>TELEGRAM STARS</b>\nВыбери нужный пакет звёзд внизу 👇", STARS_KB)
+    elif "Premium" in text:
+        send(cid, "👑 <b>TELEGRAM PREMIUM</b>\nВыбери срок подписки внизу 👇", PREM_KB)
+    elif "Купить TON" in text:
+        send(cid, f"💎 <b>RAGE STORE // ПОКУПКА TON</b>\nКурс: <b>1 TON = {TON_PRICE_UAH} грн</b>\n\nВыбери пакет или нажми <b>«Ввести своё количество TON»</b> 👇", TON_KB)
+    elif "Ввести своё количество TON" in text:
+        STATE[cid] = {"step": "ton_amount"}
+        send(cid, "✍️ <b>Введи нужное количество TON</b> (например: <code>1.5</code> или <code>7</code>):", BACK_KB)
+    elif "NFT Маркет" in text:
+
