@@ -14,27 +14,51 @@ def bt(t, st, i): return {"text": t, "style": st, "icon_custom_emoji_id": i}
 
 BEARS = {"🧸 Плюшевый мишка (15⭐)": (12, "🧸"), "🐻 Бурый мишка (15⭐)": (12, "🐻"), "🐼 Панда-мишка (25⭐)": (20, "🐼"), "🐨 Коала-мишка (50⭐)": (39, "🐨"), "🧸 Toy Bear NFT": (470, "🧸")}
 GIFTS = {"💝 Сердце (15⭐)": (12, "💝"), "🌹 Роза (25⭐)": (20, "🌹"), "🎁 Коробка (25⭐)": (20, "🎁"), "🍾 Шампанское (50⭐)": (39, "🍾"), "🎂 Торт (50⭐)": (39, "🎂"), "💐 Букет (50⭐)": (39, "💐"), "🚀 Ракета (50⭐)": (39, "🚀"), "🏆 Кубок (100⭐)": (78, "🏆"), "💍 Кольцо (100⭐)": (78, "💍"), "💎 Бриллиант (100⭐)": (78, "💎")}
-NFTS = {"🐸 Plush Pepe NFT": (1730, "🐸"), "🧢 Durov's Cap": (1190, "🧢"), "🍑 Precious Peach": (650, "🍑"), "🚬 Vintage Cigar": (360, "🚬"), "📅 Homemade Cake": (135, "🎂"), "🍭 Lol Pop NFT": (120, "🍭"), "🍬 Candy Cane": (125, "🍬"), "🎃 Scared Cat": (360, "🎃"), "🔮 Crystal Ball": (270, "🔮"), "🎩 Top Hat": (225, "🎩"), "⌚️ Swiss Watch": (515, "⌚️"), "💍 Diamond Ring": (335, "💍"), "🍸 Berry Box": (180, "🍸"), "🧿 Evil Eye": (155, "🧿"), "🍷 Spiced Wine": (145, "🍷")}
 
-FLOOR_UAH = {"mythmask": 819, "plushpepe": 1710, "durovscap": 1170, "preciouspeach": 630, "vintagecigar": 340, "toybear": 450, "scaredcat": 340, "swisswatch": 495, "diamondring": 315, "crystalball": 250, "tophat": 205, "berrybox": 160, "evileye": 135, "spicedwine": 125, "homemadecake": 115, "lolpop": 100, "candycane": 105}
+# Формат: "Название": [стартовая_цена, "эмодзи", "slug_на_fragment"]
+NFTS = {
+    "🐸 Plush Pepe NFT": [1730, "🐸", "plushpepe"],
+    "🧢 Durov's Cap": [1190, "🧢", "durovscap"],
+    "🍑 Precious Peach": [650, "🍑", "preciouspeach"],
+    "🚬 Vintage Cigar": [360, "🚬", "vintagecigar"],
+    "📅 Homemade Cake": [135, "🎂", "homemadecake"],
+    "🍭 Lol Pop NFT": [120, "🍭", "lolpop"],
+    "🍬 Candy Cane": [125, "🍬", "candycane"],
+    "🎃 Scared Cat": [360, "🎃", "scaredcat"],
+    "🔮 Crystal Ball": [270, "🔮", "crystalball"],
+    "🎩 Top Hat": [225, "🎩", "tophat"],
+    "⌚️ Swiss Watch": [515, "⌚️", "swisswatch"],
+    "💍 Diamond Ring": [335, "💍", "diamondring"],
+    "🍸 Berry Box": [180, "🍸", "berrybox"],
+    "🧿 Evil Eye": [155, "🧿", "evileye"],
+    "🍷 Spiced Wine": [145, "🍷", "spicedwine"]
+}
 ST, ORD = {}, {}
 
 def fetch_fragment_ton(slug, col):
     hdr = {"User-Agent": "Mozilla/5.0"}
-    try:
-        html = requests.get(f"https:{S}{S}fragment.com{S}gift{S}{slug}", headers=hdr, timeout=6).text
-        m = re.search(r'icon-ton[^>]*>.*?tm-value[^>]*>([0-9.,]+)<', html, re.S)
-        if m:
-            v = float(m.group(1).replace(",", ""))
-            if 1 <= v <= 1000: return v
-    except Exception: pass
-    return round(FLOOR_UAH.get(col, 300) / TON_UAH, 2)
+    for u in (f"https:{S}{S}fragment.com{S}gift{S}{slug}", f"https:{S}{S}fragment.com{S}gifts{S}{col}?sort=price_asc&filter=sale"):
+        try:
+            html = requests.get(u, headers=hdr, timeout=5).text
+            vals = [float(x.replace(",", "")) for x in re.findall(r'icon-ton[^>]*>.*?tm-value[^>]*>([0-9.,]+)<', html, re.S) if 0.5 <= float(x.replace(",", "")) <= 500]
+            if vals: return min(vals)
+        except Exception: pass
+    return None
+
+def sync_fragment_prices():
+    for name, item in NFTS.items():
+        col = item.copy().pop()
+        ton_v = fetch_fragment_ton(col, col)
+        if ton_v:
+            item.pop(0)
+            item.insert(0, round(ton_v * TON_UAH) + 20)
+    print("FRAGMENT PRICES SYNCED!", flush=True)
 
 def detect_nft_price(link):
     slug = link.rstrip(S).split(S).pop().lower()
     col = slug.split("-").pop(0)
-    ton_price = fetch_fragment_ton(slug, col)
-    return ton_price, round(ton_price * TON_UAH) + 20
+    ton_p = fetch_fragment_ton(slug, col) or 18.2
+    return ton_p, round(ton_p * TON_UAH) + 20
 
 class H(BaseHTTPRequestHandler):
     def do_GET(self): self.send_response(200); self.end_headers(); self.wfile.write(b"OK")
@@ -53,7 +77,7 @@ M_KB = {"keyboard": [[bt("ТГ Звёзды", "primary", E_STAR), bt("Telegram P
 B_KB = {"keyboard": [[{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
 S_KB = {"keyboard": [[bt("50 Stars — 38 грн", "primary", E_STAR), bt("100 Stars — 76 грн", "primary", E_STAR)], [bt("250 Stars — 190 грн", "success", E_FIRE), bt("500 Stars — 380 грн", "success", E_FIRE)], [bt("1000 Stars — 760 грн", "success", E_CROWN)], [{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
 P_KB = {"keyboard": [[bt("3 МЕСЯЦА — 590 ГРН", "primary", E_GEM), bt("6 МЕСЯЦЕВ — 790 ГРН", "success", E_CROWN)], [bt("1 ГОД — 1430 ГРН", "success", E_FIRE)], [{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
-TXT = f"{pe(E_BOLT, '⚡️')} <b>RAGE STORE // DIGITAL MARKET</b>\nЖивые цены с Fragment с автовыдачей 24/7.\n\n{pe(E_STAR, '⭐️')} <b>Telegram Stars</b> — моментально по @username\n{pe(E_CROWN, '👑')} <b>Telegram Premium</b> — 3 / 6 / 12 месяцев\n{pe(E_BEAR, '🧸')} <b>Мишки / Подарки / NFT</b> — отдельные каталоги\n\n🆘 Админ: @{ADM}\n⬇️ <i>Выбери нужный раздел в меню внизу</i> ⬇️"
+TXT = f"{pe(E_BOLT, '⚡️')} <b>RAGE STORE // DIGITAL MARKET</b>\nЖивые цены с Fragment (+20 грн) с автовыдачей 24/7.\n\n{pe(E_STAR, '⭐️')} <b>Telegram Stars</b> — моментально по @username\n{pe(E_CROWN, '👑')} <b>Telegram Premium</b> — 3 / 6 / 12 месяцев\n{pe(E_BEAR, '🧸')} <b>Мишки / Подарки / NFT</b> — живой каталог Fragment\n\n🆘 Админ: @{ADM}\n⬇️ <i>Выбери нужный раздел в меню внизу</i> ⬇️"
 
 def send(c, t, k=None): post("sendMessage", {"chat_id": c, "text": t, "parse_mode": "HTML", **({"reply_markup": k} if k else {})})
 def stk(c, e): post("sendMessage", {"chat_id": c, "text": e})
@@ -81,7 +105,7 @@ def handle(u):
         elif d == "link_nft": ST.update({c: {"s": "nl"}}); send(c, "🔗 Пришли ссылку на нужный NFT (например <code>t.me/nft/MythMask-35028</code>):", B_KB)
         elif d.startswith("b:") or d.startswith("g:") or d.startswith("n:"):
             p, k = d.split(":", 1); src = BEARS if p == "b" else (GIFTS if p == "g" else NFTS)
-            price, emo = src.get(k, (12, "🎁")); stk(c, emo)
+            it = list(src.get(k, (12, "🎁"))); price, emo = it.pop(0), it.pop(0); stk(c, emo)
             ST.update({c: {"s": "u", "t": k, "p": price}}); send(c, f"✨ Выбрано: <b>{k}</b> (<b>{price} грн</b>)\nВведи <b>@username</b> получателя:", B_KB)
         elif d.startswith("chk:"):
             _, oid = d.split(":", 1); o = ORD.get(oid)
@@ -101,12 +125,12 @@ def handle(u):
         elif stp == "nl":
             ton_p, auto_p = detect_nft_price(tx)
             ST.update({c: {"s": "u", "t": f"NFT ({tx})", "p": auto_p}})
-            send(c, f"🖼 <b>Цена с Fragment: {ton_p} TON</b>\n💰 К оплате (+20 грн): <b>{auto_p} грн</b>\n\n👤 Введи свой <b>@username</b>, куда передать NFT:", B_KB)
+            send(c, f"🖼 <b>Цена на Fragment: {ton_p} TON</b>\n💰 К оплате (+20 грн): <b>{auto_p} грн</b>\n\n👤 Введи свой <b>@username</b>, куда передать NFT:", B_KB)
     elif "Звёзды" in tx: send(c, f"{pe(E_STAR, '⭐️')} <b>TELEGRAM STARS</b>\nВыбери пакет звёзд:", S_KB)
     elif "Premium" in tx: send(c, f"{pe(E_CROWN, '👑')} <b>TELEGRAM PREMIUM</b>\nВыбери срок подписки:", P_KB)
     elif tx == "Мишки": send(c, f"{pe(E_BEAR, '🧸')} <b>КАТАЛОГ МИШЕК</b>\nНажми на мишку:", cat(BEARS, "b"))
     elif tx == "Подарки": send(c, f"{pe(E_GIFT, '🎁')} <b>КАТАЛОГ ПОДАРКОВ</b>\nНажми на подарок:", cat(GIFTS, "g"))
-    elif tx == "NFT-подарки": send(c, f"{pe(E_FIRE, '🖼')} <b>КАТАЛОГ NFT-ПОДАРКОВ</b>\nНажми на NFT или пришли ссылку:", cat(NFTS, "n", True))
+    elif tx == "NFT-подарки": send(c, f"{pe(E_FIRE, '🖼')} <b>КАТАЛОГ NFT-ПОДАРКОВ (ЦЕНЫ FRAGMENT +20 ГРН)</b>\nНажми на NFT или пришли ссылку:", cat(NFTS, "n", True))
     elif "Поддержка" in tx: send(c, f"🆘 Поддержка @{ADM} (9:00–22:30)", {"inline_keyboard": [[{"text": f"🆘 НАПИСАТЬ (@{ADM})", "url": URL, "style": "danger"}]]})
     elif "—" in tx:
         l, r = tx.split("—", 1); p = int("".join(x for x in r if x.isdigit())); ST.update({c: {"s": "u", "t": l.strip(), "p": p}})
@@ -114,11 +138,4 @@ def handle(u):
 
 def main():
     threading.Thread(target=lambda: HTTPServer(("0.0.0.0", int(os.environ.get("PORT", 8080))), H).serve_forever(), daemon=True).start()
-    post("deleteWebhook", {"drop_pending_updates": True}); print("RAGE STORE 24/7 ONLINE!", flush=True); off = 0
-    while True:
-        r = post("getUpdates", {"offset": off, "timeout": 20})
-        if r and r.get("ok"):
-            for u in r.get("result", []): off = u.get("update_id", 0) + 1; handle(u)
-
-if __name__ == "__main__": main()
-# END
+    threading.Thread(target=sync_fragment_prices, daemon=True).start()
