@@ -12,28 +12,29 @@ E_BOLT, E_STAR, E_CROWN, E_GEM, E_FIRE, E_GIFT, E_BEAR, E_SOS = "536832417067120
 def pe(i, f): return f'<tg-emoji emoji-id="{i}">{f}</tg-emoji>'
 def bt(t, st, i): return {"text": t, "style": st, "icon_custom_emoji_id": i}
 
-BEARS = {"🧸 Плюшевый мишка (15⭐)": (12, "🧸"), "🐻 Бурый мишка (15⭐)": (12, "🐻"), "🐼 Панда-мишка (25⭐)": (20, "🐼"), "🐨 Коала-мишка (50⭐)": (39, "🐨"), "🧸 Toy Bear NFT": (500, "🧸")}
+BEARS = {"🧸 Плюшевый мишка (15⭐)": (12, "🧸"), "🐻 Бурый мишка (15⭐)": (12, "🐻"), "🐼 Панда-мишка (25⭐)": (20, "🐼"), "🐨 Коала-мишка (50⭐)": (39, "🐨"), "🧸 Toy Bear NFT": (470, "🧸")}
 GIFTS = {"💝 Сердце (15⭐)": (12, "💝"), "🌹 Роза (25⭐)": (20, "🌹"), "🎁 Коробка (25⭐)": (20, "🎁"), "🍾 Шампанское (50⭐)": (39, "🍾"), "🎂 Торт (50⭐)": (39, "🎂"), "💐 Букет (50⭐)": (39, "💐"), "🚀 Ракета (50⭐)": (39, "🚀"), "🏆 Кубок (100⭐)": (78, "🏆"), "💍 Кольцо (100⭐)": (78, "💍"), "💎 Бриллиант (100⭐)": (78, "💎")}
-NFTS = {"🐸 Plush Pepe NFT": (1760, "🐸"), "🧢 Durov's Cap": (1220, "🧢"), "🍑 Precious Peach": (680, "🍑"), "🚬 Vintage Cigar": (390, "🚬"), "📅 Homemade Cake": (165, "🎂"), "🍭 Lol Pop NFT": (150, "🍭"), "🍬 Candy Cane": (155, "🍬"), "🎃 Scared Cat": (390, "🎃"), "🔮 Crystal Ball": (300, "🔮"), "🎩 Top Hat": (255, "🎩"), "⌚️ Swiss Watch": (545, "⌚️"), "💍 Diamond Ring": (365, "💍"), "🍸 Berry Box": (210, "🍸"), "🧿 Evil Eye": (185, "🧿"), "🍷 Spiced Wine": (175, "🍷")}
+NFTS = {"🐸 Plush Pepe NFT": (1730, "🐸"), "🧢 Durov's Cap": (1190, "🧢"), "🍑 Precious Peach": (650, "🍑"), "🚬 Vintage Cigar": (360, "🚬"), "📅 Homemade Cake": (135, "🎂"), "🍭 Lol Pop NFT": (120, "🍭"), "🍬 Candy Cane": (125, "🍬"), "🎃 Scared Cat": (360, "🎃"), "🔮 Crystal Ball": (270, "🔮"), "🎩 Top Hat": (225, "🎩"), "⌚️ Swiss Watch": (515, "⌚️"), "💍 Diamond Ring": (335, "💍"), "🍸 Berry Box": (180, "🍸"), "🧿 Evil Eye": (155, "🧿"), "🍷 Spiced Wine": (145, "🍷")}
+
+FLOOR_UAH = {"mythmask": 819, "plushpepe": 1710, "durovscap": 1170, "preciouspeach": 630, "vintagecigar": 340, "toybear": 450, "scaredcat": 340, "swisswatch": 495, "diamondring": 315, "crystalball": 250, "tophat": 205, "berrybox": 160, "evileye": 135, "spicedwine": 125, "homemadecake": 115, "lolpop": 100, "candycane": 105}
 ST, ORD = {}, {}
 
 def fetch_fragment_ton(slug, col):
     hdr = {"User-Agent": "Mozilla/5.0"}
-    for target_url in (f"https:{S}{S}fragment.com{S}gift{S}{slug}", f"https:{S}{S}fragment.com{S}gifts{S}{col}?sort=price_asc&filter=sale"):
-        try:
-            html = requests.get(target_url, headers=hdr, timeout=6).text
-            vals = [float(x.replace(",", "")) for x in re.findall(r'tm-value[^>]*>([0-9.,]+)<', html) if 1 <= float(x.replace(",", "")) <= 5000]
-            if vals:
-                return min(vals)
-        except Exception:
-            pass
-    return 3.0
+    try:
+        html = requests.get(f"https:{S}{S}fragment.com{S}gift{S}{slug}", headers=hdr, timeout=6).text
+        m = re.search(r'icon-ton[^>]*>.*?tm-value[^>]*>([0-9.,]+)<', html, re.S)
+        if m:
+            v = float(m.group(1).replace(",", ""))
+            if 1 <= v <= 1000: return v
+    except Exception: pass
+    return round(FLOOR_UAH.get(col, 300) / TON_UAH, 2)
 
 def detect_nft_price(link):
     slug = link.rstrip(S).split(S).pop().lower()
     col = slug.split("-").pop(0)
     ton_price = fetch_fragment_ton(slug, col)
-    return ton_price, round(ton_price * TON_UAH) + 50
+    return ton_price, round(ton_price * TON_UAH) + 20
 
 class H(BaseHTTPRequestHandler):
     def do_GET(self): self.send_response(200); self.end_headers(); self.wfile.write(b"OK")
@@ -100,7 +101,7 @@ def handle(u):
         elif stp == "nl":
             ton_p, auto_p = detect_nft_price(tx)
             ST.update({c: {"s": "u", "t": f"NFT ({tx})", "p": auto_p}})
-            send(c, f"🖼 <b>Цена с Fragment: {ton_p} TON</b>\n💰 К оплате (+50 грн): <b>{auto_p} грн</b>\n\n👤 Введи свой <b>@username</b>, куда передать NFT:", B_KB)
+            send(c, f"🖼 <b>Цена с Fragment: {ton_p} TON</b>\n💰 К оплате (+20 грн): <b>{auto_p} грн</b>\n\n👤 Введи свой <b>@username</b>, куда передать NFT:", B_KB)
     elif "Звёзды" in tx: send(c, f"{pe(E_STAR, '⭐️')} <b>TELEGRAM STARS</b>\nВыбери пакет звёзд:", S_KB)
     elif "Premium" in tx: send(c, f"{pe(E_CROWN, '👑')} <b>TELEGRAM PREMIUM</b>\nВыбери срок подписки:", P_KB)
     elif tx == "Мишки": send(c, f"{pe(E_BEAR, '🧸')} <b>КАТАЛОГ МИШЕК</b>\nНажми на мишку:", cat(BEARS, "b"))
