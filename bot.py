@@ -12,7 +12,6 @@ TON_PRICE_UAH = 90
 UAH_PER_USDT = 45.5
 CRYPTO_PAY_TOKEN = ""
 
-# Каталог подарков: название -> (цена в грн, точное имя картинки на Fragment)
 NFT_CATALOG = {
     "Plush Pepe #104": (4500, "plushpepe-104.medium.jpg"),
     "Durov's Cap #88": (3200, "durovscap-88.medium.jpg"),
@@ -96,8 +95,9 @@ def handle(upd):
         elif data.startswith("buy_nft:"):
             _, name = data.split(":", 1)
             info = NFT_CATALOG.get(name, (1000, ""))
-            STATE.update({cid: {"step": "user", "title": f"NFT: {name}", "price": info}})
-            send(cid, f"🖼 Выбран <b>{name}</b>. Введи свой <b>@username</b>:", BACK_KB)
+            price = next(iter(info), 1000)
+            STATE.update({cid: {"step": "user", "title": f"NFT: {name}", "price": price}})
+            send(cid, f"🖼 Выбран <b>{name}</b> ({price} грн). Введи свой <b>@username</b>:", BACK_KB)
         elif data.startswith("chk:"):
             _, oid = data.split(":", 1)
             o = ORDERS.get(oid)
@@ -134,8 +134,9 @@ def handle(upd):
                 send(cid, "⚠️ Введи число, например: <code>2.5</code>", BACK_KB)
         elif step == "nft_link":
             STATE.update({cid: {"step": "nft_price", "link": text}})
-            slug = text.rstrip(SLASH).split(SLASH)[-1].lower()
-            if "nft" in text:
+            parts = text.rstrip(SLASH).split(SLASH)
+            slug = (parts.pop() if parts else "").lower()
+            if "nft" in text and slug:
                 send_photo(cid, f"{NFT_CDN}{slug}.medium.jpg", "💰 Введи цену этого NFT в грн:", BACK_KB)
             else:
                 send(cid, "💰 Введи цену этого NFT в грн:", BACK_KB)
@@ -169,4 +170,3 @@ def handle(upd):
         send(cid, f"✅ Выбрано: <b>{l.strip()}</b> ({p} грн)\nВведи {ask}:", BACK_KB)
 
 def main():
-    threading.Thread(target=start_web, daemon=True).start()
