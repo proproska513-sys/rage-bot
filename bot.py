@@ -111,9 +111,8 @@ def handle(u):
         l, r = tx.split("—", 1); p = int("".join(x for x in r if x.isdigit())); ST.update({c: {"s": "u", "t": l.strip(), "p": p}})
         send(c, f"✅ Выбрано: <b>{l.strip()}</b> ({p} грн)\nВведи <b>@username</b> получателя:", B_KB)
 
-def sync_frag():
-    for it in NFTS.values():
-        col = it.copy().pop(); v = frag_ton(col, col)
-        if v: it.pop(0); it.insert(0, round(v * TON_UAH) + 20)
-
-threading.Thread(target=lambda: HTTPServer(("0.0.0.0", int(os.environ.get("PORT", 8080))), H).serve_forever(), daemon=True).start()
+def loop():
+    post("deleteWebhook", {"drop_pending_updates": True}); print("RAGE STORE 24/7 ONLINE!", flush=True); off = 0
+    while True:
+        r = post("getUpdates", {"offset": off, "timeout": 20})
+        if r and r.get("ok"):
