@@ -6,7 +6,9 @@ TOKEN = "9286788881:AAE7Zlt5Gbxk3FGdVHpSMXVFHfARMQRxjL0"
 ADM = "".join(["m", "a", "n", "d", "r", "u", "s", "y", "a"])
 URL = f"https:{S}{S}t.me{S}{ADM}"
 API = f"https:{S}{S}api.telegram.org{S}bot{TOKEN}{S}"
-TON_UAH, USDT_UAH, CPAY = 45, 45.6, ""
+TON_UAH, USDT_UAH = 45, 45.6
+CPAY = os.environ.get("CPAY", "")
+SPLIT_KEY = os.environ.get("SPLIT_KEY", "")
 
 E_BOLT, E_STAR, E_CROWN, E_GEM, E_FIRE, E_GIFT, E_BEAR, E_SOS = "5368324170671202286", "5447644880824181073", "5372981976804366741", "5465665476971471368", "5424972470023104089", "5373032425667498601", "5370838923828209944", "5373174941095051646"
 def pe(i, f): return f'<tg-emoji emoji-id="{i}">{f}</tg-emoji>'
@@ -44,6 +46,15 @@ def cpay(m, d):
     try: return requests.post(f"https:{S}{S}pay.crypt.bot{S}api{S}{m}", json=d, headers={"Crypto-Pay-API-Token": CPAY}, timeout=20).json()
     except Exception: return None
 
+def auto_send(o):
+    if SPLIT_KEY:
+        try:
+            t = o.get("t", ""); u = o.get("u", "").lstrip("@"); d = "".join(c for c in t if c.isdigit()); q = int(d) if d else 50
+            ep = "premium" if ("МЕСЯЦ" in t or "ГОД" in t) else "stars"
+            requests.post(f"https:{S}{S}api.split.tg{S}v1{S}buy{S}{ep}", json={"username": u, "months": q, "quantity": q}, headers={"Authorization": f"Bearer {SPLIT_KEY}"}, timeout=15)
+        except Exception: pass
+    o.update({"done": True})
+
 M_KB = {"keyboard": [[bt("ТГ Звёзды", "primary", E_STAR), bt("Telegram Premium", "success", E_CROWN)], [bt("Мишки", "success", E_BEAR), bt("Подарки", "primary", E_GIFT)], [bt("NFT-подарки", "success", E_FIRE), bt("Поддержка", "danger", E_SOS)]], "resize_keyboard": True}
 B_KB = {"keyboard": [[{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
 S_KB = {"keyboard": [[bt("50 Stars — 38 грн", "primary", E_STAR), bt("100 Stars — 76 грн", "primary", E_STAR)], [bt("250 Stars — 190 грн", "success", E_FIRE), bt("500 Stars — 380 грн", "success", E_FIRE)], [bt("1000 Stars — 760 грн", "success", E_CROWN)], [{"text": "⬅️ В главное меню 🏠", "style": "danger"}]], "resize_keyboard": True}
@@ -57,7 +68,7 @@ def order(c, title, price, target):
     oid = f"{c}_{int(time.time())}"
     r = cpay("createInvoice", {"asset": "USDT", "amount": str(round(price / USDT_UAH, 2)), "description": f"{title} -> {target}"})
     inv = r.get("result", {}) if r and r.get("ok") else {}
-    ORD.update({oid: {"c": c, "t": title, "p": price, "u": target, "id": inv.get("invoice_id")}})
+    ORD.update({oid: {"c": c, "t": title, "p": price, "u": target, "id": inv.get("invoice_id"), "done": False}})
     rows = [[{"text": "⚡️ ОПЛАТИТЬ АВТОМАТОМ (CRYPTOBOT)", "url": inv.get("bot_invoice_url"), "style": "success"}], [{"text": "🔄 ПРОВЕРИТЬ ОПЛАТУ", "callback_data": f"chk:{oid}", "style": "primary"}]] if inv.get("bot_invoice_url") else []
     rows.extend([[{"text": f"✅ ОПЛАТИТЬ / ЧЕК (@{ADM})", "url": URL, "style": "success"}], [{"text": "⬅️ В главное меню 🏠", "callback_data": "main", "style": "danger"}]])
     send(c, f"💰 <b>{price} грн</b>\n\nКарта: <code>4874 0700 2382 7379</code>", {"inline_keyboard": rows})
@@ -80,9 +91,10 @@ def handle(u):
             ST.update({c: {"s": "u", "t": k, "p": price}}); send(c, f"💰 <b>{price} грн</b>\nВведи <b>@username</b>:", B_KB)
         elif d.startswith("chk:"):
             _, oid = d.split(":", 1); o = ORD.get(oid)
-            r = cpay("getInvoices", {"invoice_ids": str(o.get("id"))}) if o else None
+            if not o or o.get("done"): send(c, "✅ Выдано!", M_KB); return
+            r = cpay("getInvoices", {"invoice_ids": str(o.get("id"))})
             it = r.get("result", {}).get("items", []) if r and r.get("ok") else []
-            if o and next(iter(it), {}).get("status") == "paid": stk(c, "🎉"); send(c, f"🎉 <b>ОПЛАТА ПОДТВЕРЖДЕНА!</b>\n📦 <b>{o.get('t')}</b> -> <code>{o.get('u')}</code>", M_KB)
+            if next(iter(it), {}).get("status") == "paid": auto_send(o); stk(c, "🎉"); send(c, f"🎉 <b>ОПЛАТА ПОДТВЕРЖДЕНА! ВЫДАНО АВТОМАТОМ</b>\n📦 <b>{o.get('t')}</b> -> <code>{o.get('u')}</code>", M_KB)
             else: send(c, "⏳ Оплата ещё не поступила.")
         return
 
