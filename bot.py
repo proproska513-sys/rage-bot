@@ -1,4 +1,4 @@
-import os, re, time, threading, requests
+import os, time, threading, requests
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 S = chr(47)
@@ -20,7 +20,13 @@ def frag_ton(slug, col):
     for u in (f"https:{S}{S}fragment.com{S}gift{S}{slug}", f"https:{S}{S}fragment.com{S}gifts{S}{col}?sort=price_asc&filter=sale"):
         try:
             html = requests.get(u, headers={"User-Agent": "Mozilla/5.0"}, timeout=5).text
-            vals = [float(x.replace(",", "")) for x in re.findall(r'icon-ton[^>]*>.*?tm-value[^>]*>([0-9.,]+)<', html, re.S) if 0.5 <= float(x.replace(",", "")) <= 500]
+            vals = []
+            for part in html.split('icon-ton">'):
+                if 'tm-value">' in part:
+                    raw = part.split('tm-value">', 1).pop().split("<", 1).pop(0).replace(",", "").strip()
+                    if raw.replace(".", "", 1).isdigit():
+                        v = float(raw)
+                        if 0.5 <= v <= 500: vals.append(v)
             if vals: return min(vals)
         except Exception: pass
     return None
@@ -115,5 +121,3 @@ def handle(u):
         l, r = tx.split("—", 1); p = int("".join(x for x in r if x.isdigit())); ST.update({c: {"s": "u", "t": l.strip(), "p": p}})
         send(c, f"✅ Выбрано: <b>{l.strip()}</b> ({p} грн)\nВведи <b>@username</b> получателя:", B_KB)
 
-def main():
-    threading.Thread(target=lambda: HTTPServer(("0.0.0.0", int(os.environ.get("PORT", 8080))), H).serve_forever(), daemon=True).start()
