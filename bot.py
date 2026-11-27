@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import os, time, threading, requests
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -22,20 +16,6 @@ GIFTS = {"💝 Сердце (15⭐)": (12, "💝"), "🌹 Роза (25⭐)": (20
 NFTS = {"🐸 Plush Pepe NFT": [1730, "🐸", "plushpepe"], "🧢 Durov's Cap": [1190, "🧢", "durovscap"], "🍑 Precious Peach": [650, "🍑", "preciouspeach"], "🚬 Vintage Cigar": [360, "🚬", "vintagecigar"], "📅 Homemade Cake": [135, "🎂", "homemadecake"], "🍭 Lol Pop NFT": [120, "🍭", "lolpop"], "🍬 Candy Cane": [125, "🍬", "candycane"], "🎃 Scared Cat": [360, "🎃", "scaredcat"], "🔮 Crystal Ball": [270, "🔮", "crystalball"], "🎩 Top Hat": [225, "🎩", "tophat"], "⌚️ Swiss Watch": [515, "⌚️", "swisswatch"], "💍 Diamond Ring": [335, "💍", "diamondring"], "🍸 Berry Box": [180, "🍸", "berrybox"], "🧿 Evil Eye": [155, "🧿", "evileye"], "🍷 Spiced Wine": [145, "🍷", "spicedwine"]}
 ST, ORD = {}, {}
 
-def frag_ton(slug, col):
-    for u in (f"https:{S}{S}fragment.com{S}gift{S}{slug}", f"https:{S}{S}fragment.com{S}gifts{S}{col}?sort=price_asc&filter=sale"):
-        try:
-            html = requests.get(u, headers={"User-Agent": "Mozilla/5.0"}, timeout=5).text
-            vals = [float(p.split('tm-value">', 1).pop().split("<", 1).pop(0).replace(",", "")) for p in html.split('icon-ton">') if 'tm-value">' in p and 0.5 <= float(p.split('tm-value">', 1).pop().split("<", 1).pop(0).replace(",", "") or 0) <= 500]
-            if vals: return min(vals)
-        except Exception: pass
-    return None
-
-def sync_frag():
-    for it in NFTS.values():
-        col = it.copy().pop(); v = frag_ton(col, col)
-        if v: it.pop(0); it.insert(0, round(v * TON_UAH) + 20)
-
 class H(BaseHTTPRequestHandler):
     def do_GET(self): self.send_response(200); self.end_headers(); self.wfile.write(b"OK")
     def log_message(self, *a): pass
@@ -48,6 +28,17 @@ def cpay(m, d):
     if not CPAY: return None
     try: return requests.post(f"https:{S}{S}pay.crypt.bot{S}api{S}{m}", json=d, headers={"Crypto-Pay-API-Token": CPAY}, timeout=20).json()
     except Exception: return None
+
+def frag_ton(slug, col):
+    for u in (f"https:{S}{S}fragment.com{S}gift{S}{slug}", f"https:{S}{S}fragment.com{S}gifts{S}{col}?sort=price_asc&filter=sale"):
+        try:
+            html = requests.get(u, headers={"User-Agent": "Mozilla/5.0"}, timeout=5).text
+            for p in html.split('icon-ton">'):
+                if 'tm-value">' in p:
+                    raw = p.split('tm-value">', 1).pop().split("<", 1).pop(0).replace(",", "").strip()
+                    if raw.replace(".", "", 1).isdigit() and 0.5 <= float(raw) <= 500: return float(raw)
+        except Exception: pass
+    return None
 
 def auto_send(o):
     if SPLIT_KEY:
@@ -120,5 +111,9 @@ def handle(u):
         l, r = tx.split("—", 1); p = int("".join(x for x in r if x.isdigit())); ST.update({c: {"s": "u", "t": l.strip(), "p": p}})
         send(c, f"✅ Выбрано: <b>{l.strip()}</b> ({p} грн)\nВведи <b>@username</b> получателя:", B_KB)
 
+def sync_frag():
+    for it in NFTS.values():
+        col = it.copy().pop(); v = frag_ton(col, col)
+        if v: it.pop(0); it.insert(0, round(v * TON_UAH) + 20)
+
 threading.Thread(target=lambda: HTTPServer(("0.0.0.0", int(os.environ.get("PORT", 8080))), H).serve_forever(), daemon=True).start()
-threading.Thread(target=sync_frag, daemon=True).start()
