@@ -1,3 +1,9 @@
+
+
+
+
+
+
 import os, time, threading, requests
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -20,13 +26,7 @@ def frag_ton(slug, col):
     for u in (f"https:{S}{S}fragment.com{S}gift{S}{slug}", f"https:{S}{S}fragment.com{S}gifts{S}{col}?sort=price_asc&filter=sale"):
         try:
             html = requests.get(u, headers={"User-Agent": "Mozilla/5.0"}, timeout=5).text
-            vals = []
-            for part in html.split('icon-ton">'):
-                if 'tm-value">' in part:
-                    raw = part.split('tm-value">', 1).pop().split("<", 1).pop(0).replace(",", "").strip()
-                    if raw.replace(".", "", 1).isdigit():
-                        v = float(raw)
-                        if 0.5 <= v <= 500: vals.append(v)
+            vals = [float(p.split('tm-value">', 1).pop().split("<", 1).pop(0).replace(",", "")) for p in html.split('icon-ton">') if 'tm-value">' in p and 0.5 <= float(p.split('tm-value">', 1).pop().split("<", 1).pop(0).replace(",", "") or 0) <= 500]
             if vals: return min(vals)
         except Exception: pass
     return None
@@ -53,8 +53,7 @@ def auto_send(o):
     if SPLIT_KEY:
         try:
             t = o.get("t", ""); u = o.get("u", "").lstrip("@"); d = "".join(c for c in t if c.isdigit()); q = int(d) if d else 50
-            ep = "premium" if "МЕСЯЦ" in t or "ГОД" in t else "stars"
-            requests.post(f"https:{S}{S}api.split.tg{S}v1{S}buy{S}{ep}", json={"username": u, "months": q, "quantity": q}, headers={"Authorization": f"Bearer {SPLIT_KEY}"}, timeout=15)
+            requests.post(f"https:{S}{S}api.split.tg{S}v1{S}buy{S}{'premium' if 'МЕСЯЦ' in t or 'ГОД' in t else 'stars'}", json={"username": u, "months": q, "quantity": q}, headers={"Authorization": f"Bearer {SPLIT_KEY}"}, timeout=15)
         except Exception: pass
     o.update({"done": True})
 
@@ -121,3 +120,5 @@ def handle(u):
         l, r = tx.split("—", 1); p = int("".join(x for x in r if x.isdigit())); ST.update({c: {"s": "u", "t": l.strip(), "p": p}})
         send(c, f"✅ Выбрано: <b>{l.strip()}</b> ({p} грн)\nВведи <b>@username</b> получателя:", B_KB)
 
+threading.Thread(target=lambda: HTTPServer(("0.0.0.0", int(os.environ.get("PORT", 8080))), H).serve_forever(), daemon=True).start()
+threading.Thread(target=sync_frag, daemon=True).start()
